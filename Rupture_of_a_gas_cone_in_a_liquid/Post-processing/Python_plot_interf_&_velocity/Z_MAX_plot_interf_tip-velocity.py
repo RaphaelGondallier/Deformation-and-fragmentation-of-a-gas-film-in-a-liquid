@@ -9,8 +9,8 @@ os.makedirs("Archives", exist_ok=True) #crée un dossier pour les données de vi
 # Carefully check these parameters before running!
 # =============================================================================
 Until_rupture = False # whether you want to stop at the rupture or not
-L_dom = 50
-L0 = 40
+L_dom =125
+L0 = 100
 R = 0.5 # = half of unit diameter
 t_step = 0.01 
 intervalle_sauvegarde = t_step
@@ -30,7 +30,7 @@ dx_min = L_dom/2**(max_refine)
 iter_rupt = 0
 rupture_time = 0
 
-for i in range(n):
+for i in range(n+1):
     t = i * intervalle_sauvegarde
     
     if not parallel:
@@ -52,6 +52,7 @@ for i in range(n):
                     valid_data.append(d)
     # Concaténation exclusive des tableaux de dimension (N, 2)
         data = np.vstack(valid_data)
+        
     segments_haut = data.reshape(-1, 2, 2)  # assemble les segments
                                             #shape N, 2, 2 [ [[x1, y1]
                                              #               [x1', y1']]
@@ -69,16 +70,16 @@ for i in range(n):
     # Identification des index où l'ordonnée (rayon) est nulle avec une tolérance (dx_min/10 ici, inférieur à la limite de maille)
     # isclose() crée une liste de booléens indiquant si les rayons sont assez proches de 0
     # where() trouve l'index (ou les index si rupture) correspondant 
-    liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-5))[0].tolist()
-    
+    liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-5))[0]
     # Évaluation du critère d'arrêt topologique
     if len(liste_index_zero) != 1:
         print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
+        print(liste_index_zero + liste_index_zero//2 +1)
         if Until_rupture == True : # stop the simu iif this is true
             break
         if rupture_time == 0: # pour ne mettre à jour ce temps qu'une fois
             rupture_time = t
-    else: 
+    elif len(liste_index_zero) == 1 and rupture_time == 0: 
         iter_rupt += 1 # Pour arrêter le calcul lors de la rupture
     
 # =============================================================================
@@ -119,19 +120,20 @@ V=[0]
 if Until_rupture == True : # ne plot qu'avant la rupture
     T=np.linspace(0, (iter_rupt-1)*intervalle_sauvegarde, iter_rupt)
 if Until_rupture == False : # plot tout
-    T=np.linspace(0, n*intervalle_sauvegarde, n)
+    T=np.linspace(0, n*intervalle_sauvegarde, n+1)
 Z = np.array(Z_list)
 T = np.array(T)
 
 # 2. Calcul de la vitesse (Schéma à 3 points d'ordre 2)
 V = -np.gradient(Z, T)
-
+#V_test = [-(Z[i-2]-Z[i+2]+8*Z[i+1]-8*Z[i-1])/(12*t_step) for i in range(2,n-1)]
 # vitesse au moment de la rupture
-if Until_rupture == False and iter_rupt!=n: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
+if Until_rupture == False and iter_rupt!=n+1: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     rupture_velo = V[iter_rupt]
 # Sauvegarde des variables cinématiques si a besoin de modifier les plots
-os.makedirs("Archives", exist_ok=True)
-np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V, rupture_time=rupture_time, rupture_velo=rupture_velo)
+    np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V, rupture_time=rupture_time, rupture_velo=rupture_velo)
+
+np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V)
 
 # Plots
 
@@ -147,22 +149,24 @@ plt.close()
 
 # Graphique de la Vitesse
 plt.plot(T, V, linestyle='-', color='darkred')
-if Until_rupture == False and iter_rupt!=n: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
+if Until_rupture == False and iter_rupt!=n+1: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     plt.plot(rupture_time, rupture_velo, marker='o', color='navy', markersize=4)
 plt.xlabel("t*")
 plt.ylabel("U*") 
-if Until_rupture :
+if Until_rupture and iter_rupt!=n+1:
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde)
+if Until_rupture and iter_rupt==n+1:
+    print("No rupture! Increase t_f?")
 plt.tight_layout()
 plt.savefig("Figures/Tip_velocity.pdf")
 plt.show()
 plt.close()
 
 plt.loglog(T, V, linestyle='-', color='darkred')
-if Until_rupture == False and iter_rupt!=n: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
+if Until_rupture == False and iter_rupt!=n+1: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     plt.plot(rupture_time, rupture_velo, marker='o', color='navy', markersize=4)
-plt.xlabel("Time")
-plt.ylabel("Contraction velocity") 
+plt.xlabel("t*")
+plt.ylabel("U*") 
 if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde) # +10 pour voir la rupture sur le graphe
 plt.savefig("Figures/loglog_tip_velocity.pdf")
