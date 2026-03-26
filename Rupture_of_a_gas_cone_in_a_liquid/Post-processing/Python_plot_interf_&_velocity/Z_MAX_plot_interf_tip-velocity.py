@@ -16,7 +16,7 @@ t_step = 0.01
 intervalle_sauvegarde = t_step
 ti=0
 tf=5
-n= round((tf-ti)/intervalle_sauvegarde) # nb de pas de temps enregistres avec outpufacets
+n = round((tf-ti)/intervalle_sauvegarde)+1 # nb de pas de temps enregistres avec outpufacets
 max_refine = 12
 
 parallel = False # whether the output_facets was run in parallel
@@ -30,7 +30,7 @@ dx_min = L_dom/2**(max_refine)
 iter_rupt = 0
 rupture_time = 0
 
-for i in range(n+1):
+for i in range(n):
     t = i * intervalle_sauvegarde
     
     if not parallel:
@@ -110,7 +110,7 @@ for i in range(n+1):
         ax.set_ylim(-3*R, 3*R)
     plt.title(f"t={t:06.3f}")
     plt.savefig(f"Figures/figure_t_{t:06.3f}.svg", bbox_inches="tight")  
-    plt.show()
+    #plt.show()
     plt.close(fig)
 
 # =============================================================================
@@ -120,7 +120,7 @@ V=[0]
 if Until_rupture == True : # ne plot qu'avant la rupture
     T=np.linspace(0, (iter_rupt-1)*intervalle_sauvegarde, iter_rupt)
 if Until_rupture == False : # plot tout
-    T=np.linspace(0, n*intervalle_sauvegarde, n+1)
+    T=np.linspace(0, (n-1)*intervalle_sauvegarde, n)
 Z = np.array(Z_list)
 T = np.array(T)
 
@@ -128,7 +128,7 @@ T = np.array(T)
 V = -np.gradient(Z, T)
 #V_test = [-(Z[i-2]-Z[i+2]+8*Z[i+1]-8*Z[i-1])/(12*t_step) for i in range(2,n-1)]
 # vitesse au moment de la rupture
-if Until_rupture == False and iter_rupt!=n+1: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
+if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     rupture_velo = V[iter_rupt]
 # Sauvegarde des variables cinématiques si a besoin de modifier les plots
     np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V, rupture_time=rupture_time, rupture_velo=rupture_velo)
@@ -149,13 +149,13 @@ plt.close()
 
 # Graphique de la Vitesse
 plt.plot(T, V, linestyle='-', color='darkred')
-if Until_rupture == False and iter_rupt!=n+1: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
+if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     plt.plot(rupture_time, rupture_velo, marker='o', color='navy', markersize=4)
 plt.xlabel("t*")
 plt.ylabel("U*") 
-if Until_rupture and iter_rupt!=n+1:
+if Until_rupture and rupture_time != 0:
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde)
-if Until_rupture and iter_rupt==n+1:
+if Until_rupture and rupture_time != 0:
     print("No rupture! Increase t_f?")
 plt.tight_layout()
 plt.savefig("Figures/Tip_velocity.pdf")
@@ -163,7 +163,7 @@ plt.show()
 plt.close()
 
 plt.loglog(T, V, linestyle='-', color='darkred')
-if Until_rupture == False and iter_rupt!=n+1: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
+if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     plt.plot(rupture_time, rupture_velo, marker='o', color='navy', markersize=4)
 plt.xlabel("t*")
 plt.ylabel("U*") 
