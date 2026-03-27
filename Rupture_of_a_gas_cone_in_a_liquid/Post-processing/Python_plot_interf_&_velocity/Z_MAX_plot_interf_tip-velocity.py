@@ -4,6 +4,8 @@ from matplotlib.collections import LineCollection
 import os
 os.makedirs("Figures", exist_ok=True) #crée un dossier pour les images
 os.makedirs("Archives", exist_ok=True) #crée un dossier pour les données de vitesse obtenues
+plt.close('all')
+
 # =============================================================================
 # Simulation file parameters
 # Carefully check these parameters before running!
@@ -21,6 +23,7 @@ max_refine = 12
 
 parallel = False # whether the output_facets was run in parallel
 nproc = 6 # if parallel how many cpus
+
 # =============================================================================
 # Post-processing
 # =============================================================================
@@ -30,7 +33,8 @@ dx_min = L_dom/2**(max_refine)
 iter_rupt = 0
 rupture_time = 0
 
-for i in range(n):
+for i in range(n): # Loop on the iterations
+    spurious_interf = False
     t = i * intervalle_sauvegarde
     
     if not parallel:
@@ -73,45 +77,65 @@ for i in range(n):
     liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-5))[0]
     # Évaluation du critère d'arrêt topologique
     if len(liste_index_zero) != 1:
-        print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
-        print(liste_index_zero + liste_index_zero//2 +1)
-        if Until_rupture == True : # stop the simu iif this is true
-            break
-        if rupture_time == 0: # pour ne mettre à jour ce temps qu'une fois
-            rupture_time = t
+        if (len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) > 2*dx_min) or len(liste_index_zero) != 2:
+             # At the tip, interf can split and lead to false positive rupture.
+             # The second condition ensures that a true bubble was formed
+            
+            print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
+            print(liste_index_zero + liste_index_zero//2 +1)
+            if Until_rupture == True : # stop the simu iif this is true
+                break
+            if rupture_time == 0: # pour ne mettre à jour ce temps qu'une fois
+                rupture_time = t
+        if abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) < 2*dx_min :
+            print(f'Spurious interface at t = {t} ')
+            spurious_interf = True # in this case have to take it into account for the tip position computation
     elif len(liste_index_zero) == 1 and rupture_time == 0: 
         iter_rupt += 1 # Pour arrêter le calcul lors de la rupture
     
 # =============================================================================
 #   Récupère le point de coord axiale max 
 # =============================================================================
-    z_tip = np.max(data[:,0])
     id_tip = np.argmax(data[:,0])
     z_tip = data[id_tip, 0]
     r_tip = data[id_tip, 1]
     
+    if spurious_interf == True :
+        data_corr = data
+        data_corr = np.delete(data_corr, id_tip, axis=0) 
+        if id_tip % 2 == 0 : 
+            data_corr = np.delete(data_corr, id_tip+1, axis=0) # also delete the other point of the segment of the spurious interf
+        elif id_tip % 2 != 0 :
+            data_corr = np.delete(data_corr, id_tip-1, axis=0) # also delete the other point of the segment of the spurious interf            
+        id_tip_corr = np.argmax(data_corr[:,0])
+        z_tip = data_corr[id_tip_corr, 0]
+        r_tip = data_corr[id_tip_corr, 1]
     Z_list.append(z_tip)
+    
 # =============================================================================
 #   Affichages interface
 # =============================================================================
-    fig, ax = plt.subplots()
-    
-    lc = LineCollection(segments, color='black', linewidth=0.2)
-    ax.add_collection(lc)
-    #ax.plot(z_tip, r_tip, marker='o', color='red', markersize=0.2, markeredgewidth=0.0)
-    ax.scatter(z_tip, r_tip, color='red', s=0.2, edgecolors='none')
-    
-    ax.set_xlabel("z")
-    ax.set_ylabel("r")
+    # fig, ax = plt.subplots()
 
-    ax.set_aspect('equal', adjustable='box')
-    if Until_rupture == True :
-        ax.set_xlim(L0*0.8, L0*1.1)
-        ax.set_ylim(-3*R, 3*R)
-    plt.title(f"t={t:06.3f}")
-    plt.savefig(f"Figures/figure_t_{t:06.3f}.svg", bbox_inches="tight")  
-    #plt.show()
-    plt.close(fig)
+    # lc = LineCollection(segments, color='black', linewidth=0.2)
+    # ax.add_collection(lc)
+    # ax.plot(z_tip, r_tip, marker='o', color='red', markersize=0.2, markeredgewidth=0.0) #0.2
+    # ax.scatter(z_tip, r_tip, color='red', s=0.2, edgecolors='none')
+    
+    # ax.set_xlabel("z")
+    # ax.set_ylabel("r")
+
+    # ax.set_aspect('equal', adjustable='box')
+    # # if Until_rupture == True :
+    #     # ax.set_xlim(L0*0.8, L0*1.1)
+    #     # ax.set_ylim(-3*R, 3*R)
+    # #ax.set_xlim(z_tip-0.005, z_tip+0.005) #to plot the spurious interf
+    # #ax.set_ylim(-0.005,0.005)
+    # plt.title(f"t={t:06.3f}")
+    # #             plt.savefig(f"Figures/spurious_interf_t_{t:06.3f}.svg", bbox_inches="tight")
+    # #plt.savefig(f"Figures/figure_t_{t:06.3f}.svg", bbox_inches="tight")  
+    # plt.show()
+    # # plt.close(fig)
 
 # =============================================================================
 # Vitesse de contraction
@@ -136,7 +160,7 @@ if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun
 np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V)
 
 # Plots
-
+plt.figure()
 # Graphique de la Position
 plt.plot(T, Z, linestyle='-')
 plt.xlabel("Time")
@@ -145,9 +169,10 @@ if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde)
 plt.savefig("Figures/Tip_position.pdf")
 plt.show()
-plt.close()
+#plt.close()
 
 # Graphique de la Vitesse
+plt.figure()
 plt.plot(T, V, linestyle='-', color='darkred')
 if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     plt.plot(rupture_time, rupture_velo, marker='o', color='navy', markersize=4)
@@ -160,8 +185,9 @@ if Until_rupture and rupture_time != 0:
 plt.tight_layout()
 plt.savefig("Figures/Tip_velocity.pdf")
 plt.show()
-plt.close()
+#plt.close()
 
+plt.figure()
 plt.loglog(T, V, linestyle='-', color='darkred')
 if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     plt.plot(rupture_time, rupture_velo, marker='o', color='navy', markersize=4)
@@ -171,9 +197,10 @@ if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde) # +10 pour voir la rupture sur le graphe
 plt.savefig("Figures/loglog_tip_velocity.pdf")
 plt.show()
-plt.close()
+#plt.close()
 
 #Vérification du déplacement minimal correctement capturé par le maillage
+plt.figure()
 plt.plot(T, V*t_step/dx_min, label=r'$\xi(r=0) / dx_{min} $ (max refinement level = 12)', linestyle='-', color='darkred')
 plt.plot(T, np.ones(len(T)), linestyle='--', label='Minimal mesh cell size limit')
 plt.xlabel("Time")
@@ -184,8 +211,9 @@ plt.legend()
 plt.tight_layout()
 plt.savefig("Figures/Minimal_mesh_cell_size_limit.pdf")
 plt.show()
-plt.close()
+#plt.close()
 
+plt.figure()
 plt.loglog(T, V*t_step/dx_min, label=r'$\xi(r=0) / dx_{min} $ (max refinement level = 12)', linestyle='-', color='darkred')
 plt.loglog(T, np.ones(len(T)), linestyle='--', label='Minimal mesh cell size limit')
 plt.xlabel("Time")
@@ -196,4 +224,4 @@ plt.legend()
 plt.tight_layout()
 plt.savefig("Figures/Minimal_mesh_cell_size_limit_loglog.pdf")
 plt.show()
-plt.close()
+#plt.close()
