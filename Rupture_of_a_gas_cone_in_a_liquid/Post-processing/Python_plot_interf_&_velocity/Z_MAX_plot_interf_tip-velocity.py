@@ -11,13 +11,13 @@ plt.close('all')
 # Carefully check these parameters before running!
 # =============================================================================
 Until_rupture = False # whether you want to stop at the rupture or not
-L_dom =125
-L0 = 100
+L_dom =62.5
+L0 = 50
 R = 0.5 # = half of unit diameter
 t_step = 0.01 
 intervalle_sauvegarde = t_step
 ti=0
-tf=5
+tf=27.99
 n = round((tf-ti)/intervalle_sauvegarde)+1 # nb de pas de temps enregistres avec outpufacets
 max_refine = 12
 
@@ -74,7 +74,7 @@ for i in range(n): # Loop on the iterations
     # Identification des index où l'ordonnée (rayon) est nulle avec une tolérance (dx_min/10 ici, inférieur à la limite de maille)
     # isclose() crée une liste de booléens indiquant si les rayons sont assez proches de 0
     # where() trouve l'index (ou les index si rupture) correspondant 
-    liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-5))[0]
+    liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-3))[0]
     # Évaluation du critère d'arrêt topologique
     if len(liste_index_zero) != 1:
         if (len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) > 2*dx_min) or len(liste_index_zero) != 2:
@@ -157,7 +157,8 @@ if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun
 # Sauvegarde des variables cinématiques si a besoin de modifier les plots
     np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V, rupture_time=rupture_time, rupture_velo=rupture_velo)
 
-np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V)
+else : 
+    np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V)
 
 # Plots
 plt.figure()
