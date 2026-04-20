@@ -76,12 +76,12 @@ for i in range(n): # Loop on the iterations
     # Identification des index où l'ordonnée (rayon) est nulle avec une tolérance (dx_min/10 ici, inférieur à la limite de maille)
     # isclose() crée une liste de booléens indiquant si les rayons sont assez proches de 0
     # where() trouve l'index (ou les index si rupture) correspondant 
-    liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-3))[0]
+    liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-4))[0] #1e-3 trop grand pour 1 cas observé
     # Évaluation du critère d'arrêt topologique
     if len(liste_index_zero) != 1: # s'il y a plus d'un point sur l'axe de symetrie : suspection de rupture
         if (len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) > 2*dx_min) or len(liste_index_zero) != 2:
              # At the tip, interf can split and lead to false positive rupture.
-             # The second condition ensures that a true bubble was formed
+             # The second condition ensures that a true bubble was formed (if spurious interf : the points are very close and are 2)
             
             #print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
             #print(liste_index_zero + liste_index_zero//2 +1)
