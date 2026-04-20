@@ -11,15 +11,16 @@ plt.close('all')
 # Carefully check these parameters before running!
 # =============================================================================
 Until_rupture = False # whether you want to stop at the rupture or not
-L_dom =62.5
-L0 = 50
+L_dom =125
+L0 = 100
 R = 0.5 # = half of unit diameter
+
 t_step = 0.01 
 intervalle_sauvegarde = t_step
 ti=0
-tf=27.99
-n = round((tf-ti)/intervalle_sauvegarde)+1 # nb de pas de temps enregistres avec outpufacets
-max_refine = 12
+tf=4
+
+max_refine = 10
 
 parallel = False # whether the output_facets was run in parallel
 nproc = 6 # if parallel how many cpus
@@ -27,6 +28,7 @@ nproc = 6 # if parallel how many cpus
 # =============================================================================
 # Post-processing
 # =============================================================================
+n = round((tf-ti)/intervalle_sauvegarde)+1 # nb de pas de temps enregistres avec outputfacets
 Z_list=[]
 nb_compt_sup_max_iter=0
 dx_min = L_dom/2**(max_refine)
@@ -76,19 +78,20 @@ for i in range(n): # Loop on the iterations
     # where() trouve l'index (ou les index si rupture) correspondant 
     liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-3))[0]
     # Évaluation du critère d'arrêt topologique
-    if len(liste_index_zero) != 1:
+    if len(liste_index_zero) != 1: # s'il y a plus d'un point sur l'axe de symetrie : suspection de rupture
         if (len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) > 2*dx_min) or len(liste_index_zero) != 2:
              # At the tip, interf can split and lead to false positive rupture.
              # The second condition ensures that a true bubble was formed
             
-            print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
-            print(liste_index_zero + liste_index_zero//2 +1)
+            #print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
+            #print(liste_index_zero + liste_index_zero//2 +1)
             if Until_rupture == True : # stop the simu iif this is true
                 break
             if rupture_time == 0: # pour ne mettre à jour ce temps qu'une fois
                 rupture_time = t
+                print(f"Rupture : arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
         if abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) < 2*dx_min :
-            print(f'Spurious interface at t = {t} ')
+            #print(f'Spurious interface at t = {t} ')
             spurious_interf = True # in this case have to take it into account for the tip position computation
     elif len(liste_index_zero) == 1 and rupture_time == 0: 
         iter_rupt += 1 # Pour arrêter le calcul lors de la rupture
@@ -102,11 +105,14 @@ for i in range(n): # Loop on the iterations
     
     if spurious_interf == True :
         data_corr = data
-        data_corr = np.delete(data_corr, id_tip, axis=0) 
+        #data_corr = np.delete(data_corr, id_tip, axis=0) # delete the spurious point (the furthest from zero)
         if id_tip % 2 == 0 : 
-            data_corr = np.delete(data_corr, id_tip+1, axis=0) # also delete the other point of the segment of the spurious interf
+            #data_corr = np.delete(data_corr, id_tip+1, axis=0) # also delete the other point of the segment of the spurious interf
+            ids_to_delete = [id_tip, id_tip + 1]
         elif id_tip % 2 != 0 :
-            data_corr = np.delete(data_corr, id_tip-1, axis=0) # also delete the other point of the segment of the spurious interf            
+            #data_corr = np.delete(data_corr, id_tip-1, axis=0) # also delete the other point of the segment of the spurious interf            
+            ids_to_delete = [id_tip, id_tip - 1]
+        data_corr = np.delete(data_corr, ids_to_delete, axis=0) # delete the spurious points at once to avoid index shifting between deletions
         id_tip_corr = np.argmax(data_corr[:,0])
         z_tip = data_corr[id_tip_corr, 0]
         r_tip = data_corr[id_tip_corr, 1]
