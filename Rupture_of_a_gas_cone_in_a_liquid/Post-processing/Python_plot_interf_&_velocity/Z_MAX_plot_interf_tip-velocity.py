@@ -18,7 +18,7 @@ R = 0.5 # = half of unit diameter
 t_step = 0.01 
 intervalle_sauvegarde = t_step
 ti=0
-tf=4
+tf=10
 
 max_refine = 10
 
@@ -78,11 +78,19 @@ for i in range(n): # Loop on the iterations
     # where() trouve l'index (ou les index si rupture) correspondant 
     liste_index_zero = np.where(np.isclose(data[:, 1], 0.0, atol=dx_min*10e-4))[0] #1e-3 trop grand pour 1 cas observé
     # Évaluation du critère d'arrêt topologique
+        
     if len(liste_index_zero) != 1: # s'il y a plus d'un point sur l'axe de symetrie : suspection de rupture
-        if (len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) > 2*dx_min) or len(liste_index_zero) != 2:
+        #if len(liste_index_zero) == 0 :
+        #    print('no point on the axis')
+        # if len(liste_index_zero)>2 and rupture_time == 0:
+        #     print("/!\ Cas inattendu à gérer /!\ : plus de 3 points dans liste_index_zero")
+        
+        #if t>3.3 and t<3.4 : print(t, liste_index_zero, data[liste_index_zero[0],0], data[liste_index_zero[1],0], abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]))
+
+        
+        if len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]) > 2*dx_min :
              # At the tip, interf can split and lead to false positive rupture.
              # The second condition ensures that a true bubble was formed (if spurious interf : the points are very close and are 2)
-            
             #print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
             #print(liste_index_zero + liste_index_zero//2 +1)
             if Until_rupture == True : # stop the simu iif this is true
@@ -90,7 +98,7 @@ for i in range(n): # Loop on the iterations
             if rupture_time == 0: # pour ne mettre à jour ce temps qu'une fois
                 rupture_time = t
                 print(f"Rupture : arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
-        if abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) < 2*dx_min :
+        if len(liste_index_zero) == 2 and abs(data[liste_index_zero[0],1] - data[liste_index_zero[1],1]) < 2*dx_min :
             #print(f'Spurious interface at t = {t} ')
             spurious_interf = True # in this case have to take it into account for the tip position computation
     elif len(liste_index_zero) == 1 and rupture_time == 0: 
