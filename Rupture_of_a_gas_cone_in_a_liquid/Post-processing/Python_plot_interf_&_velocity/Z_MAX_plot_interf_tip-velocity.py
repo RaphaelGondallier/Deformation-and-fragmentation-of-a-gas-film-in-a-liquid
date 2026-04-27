@@ -14,11 +14,11 @@ Until_rupture = False # whether you want to stop at the rupture or not
 L_dom =62.5
 L0 = 50
 R = 0.5 # = half of unit diameter
-
+alpha = 0
 t_step = 0.01 
 intervalle_sauvegarde = t_step
 ti=0
-tf=7
+tf=11
 
 max_refine = 12
 
@@ -85,10 +85,11 @@ for i in range(n): # Loop on the iterations
         # if len(liste_index_zero)>2 and rupture_time == 0:
         #     print("/!\ Cas inattendu à gérer /!\ : plus de 3 points dans liste_index_zero")
         
-        if t>5.76 and t<5.8 : print(t, liste_index_zero, data[liste_index_zero[0],0], data[liste_index_zero[1],0], data[liste_index_zero[2],0], abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]))
+        #if t>3.2 and t<3.3 : print(t, liste_index_zero, data[liste_index_zero[0],0], data[liste_index_zero[1],0], data[liste_index_zero[2],0], abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]))
 
         
-        if ( len(liste_index_zero) == 2 or len(liste_index_zero) == 3 ) and abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]) > dx_min :
+        #if ( len(liste_index_zero) == 2 or len(liste_index_zero) == 3 ) and abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]) > dx_min :
+        if len(liste_index_zero) >= 2 and abs(data[liste_index_zero[0],0] - data[liste_index_zero[1],0]) > dx_min :
              # At the tip, interf can split and lead to false positive rupture.
              # The second condition ensures that a true bubble was formed (if spurious interf : the points are very close and are 2)
             #print(f"Arrêt du post-traitement à t={t:06.3f} : la liste contient {len(liste_index_zero)} index.")
@@ -169,10 +170,10 @@ V = -np.gradient(Z, T)
 if Until_rupture == False and rupture_time != 0: # la 2e condition fait qu'aucun point n'est tracé s'il n'y a pas de rupture
     rupture_velo = V[iter_rupt]
 # Sauvegarde des variables cinématiques si a besoin de modifier les plots
-    np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V, rupture_time=rupture_time, rupture_velo=rupture_velo)
+    np.savez_compressed(f"Archives/kinematics_tip_{alpha}mrad.npz", T=T, Z=Z, V=V, rupture_time=rupture_time, rupture_velo=rupture_velo)
 
 else : 
-    np.savez_compressed("Archives/kinematics_tip.npz", T=T, Z=Z, V=V)
+    np.savez_compressed(f"Archives/kinematics_tip_{alpha}mrad.npz", T=T, Z=Z, V=V)
 
 # Plots
 plt.figure()
@@ -182,7 +183,7 @@ plt.xlabel("Time")
 plt.ylabel("Tip axial coordinate")
 if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde)
-#plt.savefig("Figures/Tip_position.pdf")
+plt.savefig("Figures/Tip_position.pdf")
 plt.show()
 #plt.close()
 
@@ -198,7 +199,7 @@ if Until_rupture and rupture_time != 0:
 if Until_rupture and rupture_time != 0:
     print("No rupture! Increase t_f?")
 plt.tight_layout()
-#plt.savefig("Figures/Tip_velocity.pdf")
+plt.savefig("Figures/Tip_velocity.pdf")
 plt.show()
 #plt.close()
 
@@ -210,7 +211,7 @@ plt.xlabel("t*")
 plt.ylabel("U*") 
 if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde) # +10 pour voir la rupture sur le graphe
-#plt.savefig("Figures/loglog_tip_velocity.pdf")
+plt.savefig("Figures/loglog_tip_velocity.pdf")
 plt.show()
 #plt.close()
 
@@ -224,7 +225,7 @@ if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde)
 plt.legend()
 plt.tight_layout()
-#plt.savefig("Figures/Minimal_mesh_cell_size_limit.pdf")
+plt.savefig("Figures/Minimal_mesh_cell_size_limit.pdf")
 plt.show()
 #plt.close()
 
@@ -237,6 +238,7 @@ if Until_rupture :
     plt.xlim(t_step, (iter_rupt+10)*intervalle_sauvegarde)
 plt.legend()
 plt.tight_layout()
-#plt.savefig("Figures/Minimal_mesh_cell_size_limit_loglog.pdf")
+plt.savefig("Figures/Minimal_mesh_cell_size_limit_loglog.pdf")
 plt.show()
 #plt.close()
+
